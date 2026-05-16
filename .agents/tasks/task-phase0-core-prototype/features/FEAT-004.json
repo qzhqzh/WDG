@@ -2,7 +2,7 @@
   "id": "FEAT-004",
   "type": "feat",
   "description": "Write comprehensive unit tests for all core logic systems using NUnit-style test classes. Tests should be pure C# that validate logic without Unity runtime.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create Assets/Tests/EditMode/GameCoreTests.cs - Test GameCore state transitions: Init->Preparation, Preparation->Combat, Combat->Settlement, Settlement->RewardSelection, RewardSelection->Preparation, CoreHealth->Defeat, AllWaves->Victory. Test illegal transitions are rejected.",
     "Create Assets/Tests/EditMode/GridMapTests.cs - Test: LoadFromConfig sets correct dimensions and cell states, IsBuildable returns true for Empty and false for Blocked/Occupied/SpawnPoint/CorePoint, SetCellState updates correctly, GetSpawnPoints and GetCorePoint return config values, IsInBounds boundary checks.",
@@ -26,5 +26,5 @@
     "Tests exercise actual logic code (not just asserting constants)"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "No dotnet SDK available for compilation (same as FEAT-001/002/003). Used Python-based syntax validation: balanced braces/parens/brackets, NUnit attributes verified, API reference cross-checks against all source files passed. All 7 test files created with correct test counts: GameCoreTests(8), GridMapTests(12), PathfindingTests(7), BuildingSystemTests(11), CombatSystemTests(7), ResourceSystemTests(8), RewardSystemTests(6). Total: 59 unit tests covering all core logic systems. EventBus is a static class so tests use EventBus.Clear() not instance creation. ServiceLocator.Clear() used in SetUp/TearDown for isolation."
 }
