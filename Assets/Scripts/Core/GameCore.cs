@@ -19,6 +19,8 @@ namespace WDG
         private CombatSystem _combatSystem;
         private RewardSystem _rewardSystem;
 
+        private bool _settlementProcessed;
+
         public void Initialize()
         {
             CurrentState = GameState.Initializing;
@@ -61,9 +63,8 @@ namespace WDG
             // Initialize resource system with starting gold
             _resourceSystem.Initialize(mapConfig.startingGold);
 
-            // Initialize all systems
+            // Initialize all systems (skip ResourceSystem - already initialized above)
             _gridMapSystem.Initialize();
-            _resourceSystem.Initialize();
             _buildingSystem.Initialize();
             _enemySystem.Initialize();
             _waveSystem.Initialize();
@@ -89,12 +90,25 @@ namespace WDG
                     // Check if wave completed
                     if (!_waveSystem.IsWaveActive && _enemySystem.ActiveEnemyCount == 0)
                     {
+                        _settlementProcessed = false;
                         TransitionTo(GameState.Settlement);
                     }
                     break;
 
                 case GameState.Settlement:
-                    HandleSettlement();
+                    if (!_settlementProcessed)
+                    {
+                        // First tick: process settlement rewards but do not transition yet.
+                        // This gives the presentation layer at least one full frame to
+                        // display wave-complete feedback before the next state change.
+                        _settlementProcessed = true;
+                        ProcessSettlementRewards();
+                    }
+                    else
+                    {
+                        // Second tick: now transition to the next state
+                        FinalizeSettlement();
+                    }
                     break;
 
                 case GameState.Preparation:
@@ -174,7 +188,7 @@ namespace WDG
             }
         }
 
-        private void HandleSettlement()
+        private void ProcessSettlementRewards()
         {
             // Add wave completion bonus
             var waveConfigs = _configSystem.WaveConfigs;
@@ -192,7 +206,10 @@ namespace WDG
             {
                 _resourceSystem.AddWaveBonus(completedWave.completionBonus);
             }
+        }
 
+        private void FinalizeSettlement()
+        {
             // Check if this was the last wave
             if (CurrentWaveIndex >= _waveSystem.TotalWaves)
             {
@@ -201,6 +218,18 @@ namespace WDG
             else
             {
                 TransitionTo(GameState.RewardSelection);
+            }
+        }
+
+        /// <summary>
+        /// Can be called by the UI to explicitly advance from Settlement state.
+        /// If not called, the state will auto-advance after one full Tick cycle.
+        /// </summary>
+        public void ConfirmSettlement()
+        {
+            if (CurrentState == GameState.Settlement && _settlementProcessed)
+            {
+                FinalizeSettlement();
             }
         }
     }

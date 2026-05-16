@@ -97,6 +97,8 @@ namespace WDG
                     if (!string.IsNullOrEmpty(card.TargetBuildingId))
                     {
                         var buildingSystem = ServiceLocator.Get<BuildingSystem>();
+
+                        // Upgrade existing placed buildings
                         var buildings = buildingSystem.GetAllBuildings();
                         foreach (var building in buildings)
                         {
@@ -105,6 +107,9 @@ namespace WDG
                                 building.AttackDamage *= card.UpgradeMultiplier;
                             }
                         }
+
+                        // Store multiplier so future placements also benefit
+                        buildingSystem.SetDamageMultiplier(card.TargetBuildingId, card.UpgradeMultiplier);
                     }
                     break;
             }

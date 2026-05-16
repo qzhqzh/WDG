@@ -124,10 +124,11 @@ namespace WDG.Tests
             // Simulate settlement logic: current wave index >= total waves => Victory
             _gameCore.TransitionTo(GameState.Settlement);
 
-            // Since HandleSettlement is private and called in Tick, we simulate by
-            // calling Tick which triggers HandleSettlement
-            // Actually, TransitionTo(Settlement) does not auto-call HandleSettlement.
-            // We need to Tick to trigger it.
+            // First tick: processes settlement rewards but stays in Settlement
+            _gameCore.Tick(0f);
+            Assert.AreEqual(GameState.Settlement, _gameCore.CurrentState);
+
+            // Second tick: finalizes and transitions to Victory
             _gameCore.Tick(0f);
 
             Assert.AreEqual(GameState.Victory, _gameCore.CurrentState);

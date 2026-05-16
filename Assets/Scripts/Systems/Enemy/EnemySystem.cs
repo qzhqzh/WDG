@@ -6,12 +6,14 @@ namespace WDG
     public class EnemySystem : IGameSystem
     {
         private readonly List<EnemyInstance> _activeEnemies = new List<EnemyInstance>();
+        private readonly Dictionary<Vector2Int, List<Vector2Int>> _pathCache = new Dictionary<Vector2Int, List<Vector2Int>>();
 
         public int ActiveEnemyCount => _activeEnemies.Count;
 
         public void Initialize()
         {
-            // No-op
+            EventBus.Subscribe<BuildingPlacedEvent>(OnBuildingPlaced);
+            EventBus.Subscribe<BuildingRemovedEvent>(OnBuildingRemoved);
         }
 
         public void Tick(float deltaTime)
@@ -41,11 +43,14 @@ namespace WDG
         public void Dispose()
         {
             _activeEnemies.Clear();
+            _pathCache.Clear();
+            EventBus.Unsubscribe<BuildingPlacedEvent>(OnBuildingPlaced);
+            EventBus.Unsubscribe<BuildingRemovedEvent>(OnBuildingRemoved);
+            EnemyInstance.ResetIdCounter();
         }
 
         public EnemyInstance SpawnEnemy(EnemyConfig config, Vector2Int spawnPoint)
         {
-            var pathfinding = ServiceLocator.Get<PathfindingModule>();
             var grid = ServiceLocator.Get<GridMapSystem>();
 
             var instance = new EnemyInstance(
@@ -56,8 +61,21 @@ namespace WDG
                 config.resourceDrop
             );
 
-            var corePoint = grid.GetCorePoint();
-            instance.Path = pathfinding.FindPath(spawnPoint, corePoint, grid);
+            // Use cached path if available; otherwise compute and cache
+            List<Vector2Int> path;
+            if (_pathCache.ContainsKey(spawnPoint))
+            {
+                path = _pathCache[spawnPoint];
+            }
+            else
+            {
+                var pathfinding = ServiceLocator.Get<PathfindingModule>();
+                var corePoint = grid.GetCorePoint();
+                path = pathfinding.FindPath(spawnPoint, corePoint, grid);
+                _pathCache[spawnPoint] = path;
+            }
+
+            instance.Path = new List<Vector2Int>(path);
             instance.PathIndex = 0;
 
             if (instance.Path.Count > 0)
@@ -96,6 +114,25 @@ namespace WDG
         public List<EnemyInstance> GetActiveEnemies()
         {
             return new List<EnemyInstance>(_activeEnemies);
+        }
+
+        /// <summary>
+        /// Clears the cached paths. Should be called when grid state changes
+        /// (e.g., buildings placed or removed).
+        /// </summary>
+        public void ClearPathCache()
+        {
+            _pathCache.Clear();
+        }
+
+        private void OnBuildingPlaced(BuildingPlacedEvent evt)
+        {
+            ClearPathCache();
+        }
+
+        private void OnBuildingRemoved(BuildingRemovedEvent evt)
+        {
+            ClearPathCache();
         }
 
         private void MoveEnemy(EnemyInstance enemy, float deltaTime)

@@ -7,6 +7,7 @@ namespace WDG
     {
         private readonly List<BuildingInstance> _buildings = new List<BuildingInstance>();
         private readonly List<string> _unlockedBuildingIds = new List<string>();
+        private readonly Dictionary<string, float> _damageMultipliers = new Dictionary<string, float>();
 
         public void Initialize()
         {
@@ -29,6 +30,7 @@ namespace WDG
         {
             _buildings.Clear();
             _unlockedBuildingIds.Clear();
+            _damageMultipliers.Clear();
         }
 
         public bool CanPlace(string configId, Vector2Int pos)
@@ -83,10 +85,18 @@ namespace WDG
             if (config == null)
                 return null;
 
+            float damage = config.attackDamage;
+
+            // Apply accumulated damage multiplier for this building type
+            if (_damageMultipliers.ContainsKey(configId))
+            {
+                damage *= _damageMultipliers[configId];
+            }
+
             var instance = new BuildingInstance(
                 configId,
                 pos,
-                config.attackDamage,
+                damage,
                 config.attackRange,
                 config.attackInterval,
                 config.targetingStrategy
@@ -157,6 +167,29 @@ namespace WDG
             {
                 _unlockedBuildingIds.Add(configId);
             }
+        }
+
+        /// <summary>
+        /// Sets/accumulates a damage multiplier for a building type.
+        /// Future placements of this configId will have their damage multiplied.
+        /// </summary>
+        public void SetDamageMultiplier(string configId, float multiplier)
+        {
+            if (_damageMultipliers.ContainsKey(configId))
+            {
+                _damageMultipliers[configId] *= multiplier;
+            }
+            else
+            {
+                _damageMultipliers[configId] = multiplier;
+            }
+        }
+
+        public float GetDamageMultiplier(string configId)
+        {
+            if (_damageMultipliers.ContainsKey(configId))
+                return _damageMultipliers[configId];
+            return 1f;
         }
 
         private BuildingConfig FindBuildingConfig(string configId, ConfigSystem configSystem)
